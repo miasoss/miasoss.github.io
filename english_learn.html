@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提升自我 - 每日学习打卡</title>
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft Yahei', 'PingFang SC', sans-serif;
+        }
+
+        /* 自定义樱花鼠标指针 */
+        body {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="%23ff99cc" d="M10,2 C7,2 4,4 4,7 C4,10 7,13 10,16 C13,13 16,10 16,7 C16,4 13,2 10,2 Z M10,4 C12,4 14,6 14,7 C14,8 12,10 10,12 C8,10 6,8 6,7 C6,6 8,4 10,4 Z"/></svg>'), auto;
+            background: #f9f7f5;
+            overflow-x: hidden;
+            position: relative;
+            padding-right: 320px; /* 为排行榜预留空间 */
+        }
+
+        /* 花瓣/星星特效容器 */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99999;
+        }
+
+        /* 排行榜面板 */
+        .ranking-panel {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(220, 210, 200, 0.2);
+            padding: 20px;
+            z-index: 9997;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .ranking-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0ebe6;
+        }
+
+        .ranking-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #5a5652;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ranking-title i {
+            color: #ff6699;
+            font-size: 20px;
+        }
+
+        .user-id {
+            font-size: 14px;
+            color: #ff6699;
+            background: rgba(255, 240, 245, 0.5);
+            padding: 4px 10px;
+            border-radius: 15px;
+        }
+
+        .ranking-list {
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* 滚动条美化 */
+        .ranking-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .ranking-list::-webkit-scrollbar-track {
+            background: #f0ebe6;
+            border-radius: 3px;
+        }
+
+        .ranking-list::-webkit-scrollbar-thumb {
+            background: #ffcccc;
+            border-radius: 3px;
+        }
+
+        .ranking-list::-webkit-scrollbar-thumb:hover {
+            background: #ff99cc;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 8px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .ranking-item:hover {
+            background: rgba(255, 245, 240, 0.5);
+            transform: translateX(3px);
+        }
+
+        .rank-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #ff6699;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        /* 前三名特殊样式 */
+        .rank-number.top1 {
+            background: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .rank-number.top2 {
+            background: #c0c0c0;
+            box-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
+        }
+
+        .rank-number.top3 {
+            background: #cd7f32;
+            box-shadow: 0 0 10px rgba(205, 127, 50, 0.3);
+        }
+
+        .rank-info {
+            flex: 1;
+        }
+
+        .rank-name {
+            font-size: 15px;
+            color: #5a5652;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .rank-stats {
+            display: flex;
+            font-size: 12px;
+            color: #8a7d74;
+            gap: 15px;
+        }
+
+        .rank-days {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .rank-sentences {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        /* 积分显示 */
+        .rank-points {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            color: #ff9900;
+            font-weight: 600;
+        }
+
+        /* 悬浮学习面板 - 美化版 */
+        .floating-panel {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 360px);
+            max-width: 1200px;
+            min-height: 120px;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(220, 210, 200, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="%23ff6699" d="M10,2 C7,2 4,4 4,7 C4,10 7,13 10,16 C13,13 16,10 16,7 C16,4 13,2 10,2 Z M10,4 C12,4 14,6 14,7 C14,8 12,10 10,12 C8,10 6,8 6,7 C6,6 8,4 10,4 Z"/></svg>'), auto;
+            user-select: none;
+            z-index: 9999;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            padding: 15px 20px;
+        }
+
+        .floating-panel:hover {
+            box-shadow: 0 12px 40px rgba(220, 210, 200, 0.3);
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        .sentence-english {
+            font-size: 20px;
+            font-weight: 500;
+            color: #5a5652;
+            text-align: center;
+            padding: 5px 20px;
+            line-height: 1.6;
+            max-width: 1100px;
+            transition: color 0.3s ease;
+        }
+
+        .floating-panel:hover .sentence-english {
+            color: #ff6699;
+        }
+
+        .sentence-chinese {
+            font-size: 16px;
+            color: #8a7d74;
+            text-align: center;
+            padding: 5px 20px;
+            line-height: 1.5;
+            max-width: 1100px;
+            margin-top: 8px;
+        }
+
+        /* 可点击单词样式 */
+        .word-span {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="%23ff99cc" d="M10,2 C7,2 4,4 4,7 C4,10 7,13 10,16 C13,13 16,10 16,7 C16,4 13,2 10,2 Z M10,4 C12,4 14,6 14,7 C14,8 12,10 10,12 C8,10 6,8 6,7 C6,6 8,4 10,4 Z"/></svg>'), pointer;
+            position: relative;
+            padding: 0 2px;
+            border-bottom: 1px dashed #ffcccc;
+        }
+
+        .word-span:hover {
+            color: #ff6699;
+            background-color: rgba(255, 240, 245, 0.5);
+            border-radius: 2px;
+        }
+
+        /* 引导提示栏 */
+        .guide-bar {
+            position: absolute;
+            top: 200px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 30px;
+            background: rgba(255, 245, 240, 0.8);
+            border-radius: 30px;
+            color: #8a7d74;
+            font-size: 14px;
+            box-shadow: 0 4px 16px rgba(220, 210, 200, 0.15);
+            z-index: 9998;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .guide-bar:hover {
+            background: rgba(255, 245, 240, 1);
+            transform: translateX(-50%) translateY(-3px);
+        }
+
+        /* 每日任务面板 */
+        .task-panel {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 360px);
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(220, 210, 200, 0.2);
+            padding: 20px;
+            z-index: 9998;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0ebe6;
+        }
+
+        .task-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #5a5652;
+        }
+
+        .task-stats {
+            font-size: 14px;
+            color: #ff6699;
+        }
+
+        .task-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #f0ebe6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6699, #ff99cc);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #8a7d74;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .task-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 30px;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="%23ffffff" d="M10,2 C7,2 4,4 4,7 C4,10 7,13 10,16 C13,13 16,10 16,7 C16,4 13,2 10,2 Z M10,4 C12,4 14,6 14,7 C14,8 12,10 10,12 C8,10 6,8 6,7 C6,6 8,4 10,4 Z"/></svg>'), auto;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 102, 153, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #ff6699, #ff99cc);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px rgba(255, 102, 153, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0ebe6;
+            color: #8a7d74;
+        }
+
+        .btn-secondary:hover {
+            background: #e6dfd9;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(220, 210, 200, 0.2);
+        }
+
+        /* 积分按钮 */
+        .btn-points {
+            background: linear-gradient(90deg, #ff9900, #ffcc00);
+            color: white;
+        }
+
+        .btn-points:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px rgba(255, 153, 0, 0.3);
+        }
+
+        /* 默写弹窗 - 美化版 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(90, 86, 82, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 12px 40px rgba(90, 86, 82, 0.2);
+            position: relative;
+            animation: modalPop 0.4s ease;
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #5a5652;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .input-area {
+            width: 100%;
+            height: 100px;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #f0ebe6;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            resize: none;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .input-area:focus {
+            outline: none;
+            border-color: #ff99cc;
+            box-shadow: 0 0 0 4px rgba(255, 153, 204, 0.1);
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        /* 显示中文按钮 */
+        .btn-chinese {
+            background: linear-gradient(90deg, #66cc99, #99ffcc);
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .btn-chinese:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px rgba(102, 204, 153, 0.3);
+        }
+
+        /* 中文提示区域 */
+        .chinese-hint {
+            display: none;
+            padding: 15px;
+            background: rgba(102, 204, 153, 0.1);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #66cc99;
+        }
+
+        /* 结果提示弹窗 */
+        .result-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px;
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 12px 40px rgba(90, 86, 82, 0.2);
+            z-index: 10001;
+            max-width: 500px;
+            text-align: center;
+            animation: modalPop 0.4s ease;
+            display: none;
+        }
+
+        .result-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .result-correct {
+            color: #66cc99;
+        }
+
+        .result-error {
+            color: #ff6666;
+        }
+
+        .result-text {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #5a5652;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn-close {
+            padding: 8px 20px;
+            background: #f0ebe6;
+            color: #5a5652;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close:hover {
+            background: #e6dfd9;
+        }
+
+        /* 打卡成功弹窗 */
+        .checkin-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #ff6699, #ff99cc);
+            color: white;
+            box-shadow: 0 15px 40px rgba(255, 102, 153, 0.3);
+            z-index: 10001;
+            max-width: 500px;
+            text-align: center;
+            animation: checkinPop 0.6s ease;
+            display: none;
+        }
+
+        @keyframes checkinPop {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.05);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .checkin-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .checkin-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .checkin-text {
+            font-size: 18px;
+            margin-bottom: 25px;
+            opacity: 0.9;
+        }
+
+        /* 单词释义弹窗 */
+        .word-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(90, 86, 82, 0.3);
+            z-index: 10002;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .word-modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(255, 102, 153, 0.2);
+            position: relative;
+            animation: modalPop 0.3s ease;
+        }
+
+        .word-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0ebe6;
+        }
+
+        .word-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ff6699;
+        }
+
+        .word-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #f0ebe6;
+            border: none;
+            color: #8a7d74;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .word-close:hover {
+            background: #ff6699;
+            color: white;
+        }
+
+        .word-pronunciation {
+            color: #8a7d74;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .word-meaning {
+            color: #5a5652;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .word-example {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #f0ebe6;
+            color: #8a7d74;
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        /* 积分说明弹窗 */
+        .points-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(90, 86, 82, 0.5);
+            z-index: 10003;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .points-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 12px 40px rgba(90, 86, 82, 0.2);
+            position: relative;
+            animation: modalPop 0.4s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .points-title {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #ff9900;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .points-list {
+            margin-bottom: 25px;
+        }
+
+        .point-item {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background: rgba(255, 245, 240, 0.5);
+            border-radius: 8px;
+            border-left: 4px solid #ff9900;
+        }
+
+        .point-points {
+            font-weight: 600;
+            color: #ff9900;
+            margin-right: 10px;
+        }
+
+        .point-reward {
+            color: #5a5652;
+        }
+
+        .point-special {
+            background: rgba(255, 240, 245, 0.8);
+            border-left-color: #ff6699;
+            font-weight: 600;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 1200px) {
+            body {
+                padding-right: 0;
+            }
+            .ranking-panel {
+                position: fixed;
+                top: auto;
+                bottom: 120px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 80%;
+                max-width: 800px;
+                height: 200px;
+            }
+            .ranking-list {
+                max-height: 120px;
+            }
+            .floating-panel {
+                width: 80%;
+                max-width: 1200px;
+            }
+            .task-panel {
+                width: 80%;
+                max-width: 800px;
+                bottom: 320px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .floating-panel {
+                min-height: 100px;
+                top: 30px;
+                width: 95%;
+            }
+            .sentence-english {
+                font-size: 16px;
+            }
+            .sentence-chinese {
+                font-size: 14px;
+            }
+            .guide-bar {
+                top: 180px;
+                padding: 10px 20px;
+                font-size: 12px;
+                width: 90%;
+                text-align: center;
+            }
+            .task-panel {
+                width: 95%;
+                bottom: 300px;
+                padding: 15px;
+            }
+            .ranking-panel {
+                width: 95%;
+                bottom: 100px;
+            }
+            .modal-content {
+                padding: 20px;
+            }
+            .btn-group {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 粒子特效容器 -->
+    <div id="particle-container"></div>
+
+    <!-- 排行榜面板 -->
+    <div class="ranking-panel">
+        <div class="ranking-header">
+            <div class="ranking-title">
+                <i>🏆</i> 积分排行榜
+            </div>
+            <div class="user-id" id="currentUserId">加载中...</div>
+        </div>
+        <div class="ranking-list" id="rankingList">
+            <!-- 排行榜内容动态生成 -->
+        </div>
+        <div style="text-align: center; margin-top: 10px;">
+            <button class="btn btn-points" onclick="showPointsModal()" style="padding: 8px 15px; font-size: 13px;">📋 积分兑换说明</button>
+        </div>
+    </div>
+
+    <!-- 悬浮学习面板 -->
+    <div class="floating-panel" id="floatingPanel">
+        <div class="sentence-english" id="sentenceEnglish">✨ 正在为你加载今日学习内容...</div>
+        <div class="sentence-chinese" id="sentenceChinese"></div>
+    </div>
+
+    <!-- 引导提示 -->
+    <div class="guide-bar" id="guideBar">
+        📖 点击单词可查看释义，熟读后点击「开始默写」完成每日5句学习任务吧！
+    </div>
+
+    <!-- 每日任务面板 -->
+    <div class="task-panel">
+        <div class="task-header">
+            <div class="task-title">每日学习任务</div>
+            <div class="task-stats" id="taskStats">已坚持 0 天 | 积分: 0</div>
+        </div>
+        <div class="task-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0/5</div>
+        </div>
+        <div class="task-actions">
+            <button class="btn btn-secondary" onclick="refreshSentence()">更换句子</button>
+            <button class="btn btn-primary" onclick="triggerModalNow()">开始默写</button>
+            <button class="btn btn-points" onclick="showPointsModal()">积分说明</button>
+        </div>
+    </div>
+
+    <!-- 默写弹窗 -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-title">✍️ 请默写当前学习的句子</div>
+            <div class="chinese-hint" id="chineseHint"></div>
+            <button class="btn btn-chinese" onclick="toggleChineseHint()">显示中文提示</button>
+            <textarea class="input-area" id="inputArea" placeholder="请输入你记忆的句子..."></textarea>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="checkAnswer()">提交校对</button>
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果提示框 -->
+    <div class="result-alert" id="resultAlert">
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-text" id="resultContent"></div>
+        <button class="btn-close" onclick="closeResultAlert()">确定</button>
+    </div>
+
+    <!-- 打卡成功弹窗 -->
+    <div class="checkin-alert" id="checkinAlert">
+        <div class="checkin-icon">🎉</div>
+        <div class="checkin-title">恭喜完成今日打卡！</div>
+        <div class="checkin-text" id="checkinText">你已坚持学习 0 天，继续加油！</div>
+        <button class="btn-close" style="background: white; color: #ff6699;" onclick="closeCheckinAlert()">太棒了！</button>
+    </div>
+
+    <!-- 单词释义弹窗 -->
+    <div class="word-modal" id="wordModal">
+        <div class="word-modal-content">
+            <div class="word-header">
+                <div class="word-name" id="wordName"></div>
+                <button class="word-close" onclick="closeWordModal()">×</button>
+            </div>
+            <div class="word-pronunciation" id="wordPronunciation"></div>
+            <div class="word-meaning" id="wordMeaning"></div>
+            <div class="word-example" id="wordExample"></div>
+        </div>
+    </div>
+
+    <!-- 积分说明弹窗 -->
+    <div class="points-modal" id="pointsModal">
+        <div class="points-content">
+            <div class="points-title">🎁 积分兑换说明</div>
+            <div class="points-list">
+                <div class="point-item">
+                    <span class="point-points">10 积分</span>
+                    <span class="point-reward">可兑换橙子一个 🍊</span>
+                </div>
+                <div class="point-item">
+                    <span class="point-points">20 积分</span>
+                    <span class="point-reward">可兑换苹果一个 🍎</span>
+                </div>
+                <div class="point-item">
+                    <span class="point-points">30 积分</span>
+                    <span class="point-reward">可兑换梨子一个 🍐</span>
+                </div>
+                <div class="point-item">
+                    <span class="point-points">50 积分</span>
+                    <span class="point-reward">可兑换干脆面包丁一包 🍞</span>
+                </div>
+                <div class="point-item point-special">
+                    <span class="point-points">10000 积分</span>
+                    <span class="point-reward">可获得香吻一个 💋 (仅限ID: 5201314)</span>
+                </div>
+            </div>
+            <div style="color: #8a7d74; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                <p>💡 <strong>积分获取规则：</strong></p>
+                <p>1. 每正确默写一个句子 +1 积分</p>
+                <p>2. 每日完成5句任务 +5 积分</p>
+                <p>3. 连续打卡7天额外 +10 积分</p>
+                <p>4. 积分永久有效，不清零</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="closePointsModal()">我知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentSentence = "";
+        let currentSentenceChinese = "";
+        let dragPanel = null;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let currentModalSentence = "";
+        let currentModalChinese = "";
+        
+        // 每日任务数据
+        let dailyTaskCount = 0; // 今日已完成默写数
+        const dailyTaskTarget = 5; // 每日目标5句
+        let persistDays = localStorage.getItem('persistDays') ? parseInt(localStorage.getItem('persistDays')) : 0; // 坚持天数
+        let lastCheckinDate = localStorage.getItem('lastCheckinDate') || ""; // 最后打卡日期
+        
+        // 积分系统
+        let userPoints = localStorage.getItem('userPoints') ? parseInt(localStorage.getItem('userPoints')) : 0; // 用户积分
+        
+        // 用户ID系统（模拟基于IP的固定ID）
+        let userId = "";
+        let userDisplayName = "";
+        
+        // 用户名列表
+        const userNameList = ["李李", "昊昊", "朋朋", "党党", "金金", "淼淼", "文文", "静静", "瑶瑶", "杰杰", "楠楠", "萌萌", "姜姜", "真真", "东东"];
+        
+        // 模拟的联网排行榜数据（包含所有用户）
+        let rankingData = [];
+        
+        // 模拟的服务器数据存储（实际项目中应使用后端API）
+        const mockServerData = {
+            // 特殊用户ID
+            "5201314": {
+                name: "香吻专属用户",
+                points: 10050,
+                days: 201,
+                sentences: 1005
+            }
+        };
+
+        // 学习内容库（中英对照）
+        const learnSentences = [
+            {
+                en: "The celebrated theory is still the source of great controversy.",
+                cn: "这个著名的理论仍然是巨大争议的根源。"
+            },
+            {
+                en: "A group meeting will be held tomorrow in the library conference room.",
+                cn: "明天将在图书馆会议室举行小组会议。"
+            },
+            {
+                en: "A number of students have volunteer jobs.",
+                cn: "许多学生都有志愿工作。"
+            },
+            {
+                en: "We can all meet at my office after the lecture.",
+                cn: "讲座结束后我们都可以在我的办公室见面。"
+            },
+            {
+                en: "Tutorials are scheduled in the final week of the term.",
+                cn: "辅导课安排在学期的最后一周。"
+            },
+            {
+                en: "All industries are a system of inputs, processes, outputs and feedback.",
+                cn: "所有行业都是一个包含输入、流程、输出和反馈的系统。"
+            },
+            {
+                en: "All of the assignments must be submitted in person to the faculty office.",
+                cn: "所有作业必须亲自提交到系办公室。"
+            },
+            {
+                en: "Economic development needs to be supported by the government.",
+                cn: "经济发展需要政府的支持。"
+            },
+            {
+                en: "All students are expected to attend ten lab sessions per semester.",
+                cn: "所有学生每学期都要参加十次实验课。"
+            },
+            {
+                en: "Most scientists believe that climate change threatens the lives on earth.",
+                cn: "大多数科学家认为气候变化威胁着地球上的生命。"
+            },
+            {
+                en: "An introduction is an essential element of presentation.",
+                cn: "引言是演示文稿的核心要素。"
+            },
+            {
+                en: "Animals raised in captivity behave differently than their wild counterparts.",
+                cn: "圈养的动物行为与野生同类不同。"
+            },
+            {
+                en: "The assignments should be submitted to the department office before the deadlines.",
+                cn: "作业需在截止日期前提交至系办公室。"
+            },
+            {
+                en: "Students will develop confidence in their ability to think critically.",
+                cn: "学生将建立对自身批判性思维能力的信心。"
+            },
+            {
+                en: "Consumer confidence has a direct influence on sales.",
+                cn: "消费者信心对销售额有直接影响。"
+            },
+            {
+                en: "The economic status of the early Roman Republic will be examined.",
+                cn: "我们将探讨早期罗马共和国的经济状况。"
+            },
+            {
+                en: "The academic strength of the early Roman Republic will be examined.",
+                cn: "我们将探讨早期罗马共和国的学术发展水平。"
+            },
+            {
+                en: "He landed a job in a very prestigious law firm.",
+                cn: "他在一家极具声望的律师事务所找到了工作。"
+            },
+            {
+                en: "Many birds migrate to warmer areas for the winter.",
+                cn: "许多鸟类会迁徙到温暖的地区过冬。"
+            },
+            {
+                en: "Our professor is hosting the business development conference.",
+                cn: "我们的教授正在主持这场商业发展会议。"
+            },
+            {
+                en: "Packaging is very important to attract the attention of a buyer.",
+                cn: "包装对于吸引买家的注意力至关重要。"
+            },
+            {
+                en: "Plants are the living things that can grow on land or in water.",
+                cn: "植物是能够在陆地或水中生长的生物。"
+            },
+            {
+                en: "Radio is a popular form of entertainment throughout the world.",
+                cn: "广播是全球流行的一种娱乐形式。"
+            },
+            {
+                en: "The supposed benefits of space exploration are frequently questioned.",
+                cn: "太空探索所谓的益处常常受到质疑。"
+            },
+            {
+                en: "Food that contains antibiotics provides little or no nutritional value.",
+                cn: "含有抗生素的食物几乎没有营养价值。"
+            },
+            {
+                en: "The business policy seminar includes an internship with a local firm.",
+                cn: "这门商业政策研讨会课程包含在本地企业的实习环节。"
+            },
+            {
+                en: "The course will help students to improve their pronunciation skills.",
+                cn: "这门课程将帮助学生提升发音技巧。"
+            },
+            {
+                en: "The garden behind the university is open to the public in summer.",
+                cn: "大学后方的花园在夏季对公众开放。"
+            },
+            {
+                en: "The key difference between courses is the kind of assessment.",
+                cn: "不同课程的核心区别在于考核方式。"
+            },
+            {
+                en: "Coastal communities are particularly vulnerable to rising sea levels.",
+                cn: "沿海社区尤其容易受到海平面上升的影响。"
+            },
+            {
+                en: "The school's summer programs help students to accelerate their studies.",
+                cn: "学校的暑期项目帮助学生加快学习进度。"
+            },
+            {
+                en: "To achieve full marks, an appropriate bibliography is required.",
+                cn: "要获得满分，需附上恰当的参考文献目录。"
+            },
+            {
+                en: "We study science to understand and appreciate the world around us.",
+                cn: "我们学习科学是为了理解并欣赏周遭的世界。"
+            },
+            {
+                en: "You can find a lot more information on the university website.",
+                cn: "你可以在学校官网找到更多信息。"
+            },
+            {
+                en: "This course will teach engineering students practical skills and concepts.",
+                cn: "这门课程将教授工程专业学生实用技能与核心概念。"
+            },
+            {
+                en: "Students are advised that the lecture today has been canceled.",
+                cn: "已通知学生今日的讲座已取消。"
+            },
+            {
+                en: "Experts are now able to forecast weather over much longer periods.",
+                cn: "专家如今能够预测更长时间段的天气。"
+            },
+            {
+                en: "One of the election promises is to decrease income taxes.",
+                cn: "竞选承诺之一是降低个人所得税。"
+            },
+            {
+                en: "We have a lecture in the morning on Thursday.",
+                cn: "我们周四上午有一场讲座。"
+            },
+            {
+                en: "The elective course introduces engineering students to construction practices and concepts.",
+                cn: "这门选修课向工程专业学生介绍建筑实务与相关概念。"
+            },
+            {
+                en: "Food has become a political issue in the world.",
+                cn: "食品已成为全球范围内的政治议题。"
+            },
+            {
+                en: "Social media is criticized for causing internet addiction.",
+                cn: "社交媒体因引发网瘾问题而受到批评。"
+            },
+            {
+                en: "Sugar is a compound including carbon, oxygen, and hydrogen atoms.",
+                cn: "糖是一种包含碳、氧、氢原子的化合物。"
+            },
+            {
+                en: "The shipwreck of this year ruined some artifacts which were interested by historians.",
+                cn: "今年的沉船事故损毁了一些历史学家感兴趣的文物。"
+            },
+            {
+                en: "Consumer confidence tends to increase as the economy expands.",
+                cn: "随着经济扩张，消费者信心往往会提升。"
+            },
+            {
+                en: "Food containing ample calories provides little or no nutritional value.",
+                cn: "热量充足的食物几乎没有营养价值。"
+            },
+            {
+                en: "Blue whales are the largest animals that have ever lived.",
+                cn: "蓝鲸是有史以来体型最大的动物。"
+            },
+            {
+                en: "Photography can be very useful to geographical research.",
+                cn: "摄影对地理研究非常有帮助。"
+            },
+            {
+                en: "Your ideas are discussed and debated in seminars and tutorials.",
+                cn: "你的观点会在研讨会和辅导课上被讨论与辩论。"
+            },
+            {
+                en: "Academic libraries across the world are steadily incorporating social media.",
+                cn: "全球的高校图书馆正逐步融入社交媒体的应用。"
+            },
+            {
+                en: "New developments in manufacturing are changing the way we live.",
+                cn: "制造业的新发展正改变我们的生活方式。"
+            },
+            {
+                en: "New materials and techniques are changing the style of modern architecture.",
+                cn: "新材料和新技术正在改变现代建筑的风格。"
+            },
+            {
+                en: "Honey can be used as food and a health product.",
+                cn: "蜂蜜可作为食品和保健品使用。"
+            },
+            {
+                en: "Farmers need to adapt to the changes in climate.",
+                cn: "农民需要适应气候变化。"
+            },
+            {
+                en: "Many university lectures can now be viewed on the internet.",
+                cn: "如今许多大学讲座都能在网上观看。"
+            },
+            {
+                en: "An effective business manager is always open to new ideas.",
+                cn: "一位高效的商业管理者总是乐于接受新想法。"
+            },
+            {
+                en: "Students are required to have an undergraduate degree in Biology to be enrolled in this course.",
+                cn: "报名该课程需具备生物学本科学位。"
+            },
+            {
+                en: "Field trips are an essential part of geography courses.",
+                cn: "实地考察是地理课程的核心组成部分。"
+            },
+            {
+                en: "Marine environments have been destroyed through pollution and unsustainable development.",
+                cn: "海洋环境因污染和不可持续发展而遭到破坏。"
+            },
+            {
+                en: "A visit to the designed museum is of great value.",
+                cn: "参观这座主题博物馆具有重要价值。"
+            },
+            {
+                en: "The digital camera has some advantages over traditional film.",
+                cn: "数码相机相比传统胶片相机有若干优势。"
+            },
+            {
+                en: "It is an integrated course with several main elements.",
+                cn: "这是一门包含多个核心模块的综合课程。"
+            },
+            {
+                en: "Summer school programs allow some students to accelerate their studies.",
+                cn: "暑期学校项目让部分学生能够加快学习进度。"
+            },
+            {
+                en: "Parents are financially responsible for their children right up until they reach adulthood.",
+                cn: "父母需为子女提供经济支持直至其成年。"
+            },
+            {
+                en: "You can get your coffee and tea in the lounge.",
+                cn: "你可以在休息室获取咖啡和茶。"
+            },
+            {
+                en: "A world expert in financial management will give a guest lecture.",
+                cn: "一位全球财务管理专家将带来客座讲座。"
+            },
+            {
+                en: "A world-renowned expert on economics and marketing will give a lecture.",
+                cn: "一位享誉全球的经济与市场营销专家将举办讲座。"
+            },
+            {
+                en: "Optional tutorials are offered in the final week of the term.",
+                cn: "学期最后一周会开设选修辅导课。"
+            },
+            {
+                en: "Banks charge interest on the money they lend to customers.",
+                cn: "银行会向贷款客户收取利息。"
+            },
+            {
+                en: "When launching a product, investigating and marketing are very crucial.",
+                cn: "推出产品时，市场调研和营销推广至关重要。"
+            },
+            {
+                en: "The other book isn't thorough, but it's more insightful.",
+                cn: "另一本书虽不够详尽，但更具洞察力。"
+            },
+            {
+                en: "The dance department stages elaborated performances each semester.",
+                cn: "舞蹈系每学期都会上演精心编排的演出。"
+            },
+            {
+                en: "The year when the ship of artifacts was wrecked interested historians.",
+                cn: "装载文物的船只失事的年份引起了历史学家的兴趣。"
+            },
+            {
+                en: "New media have transcended traditional national boundaries.",
+                cn: "新媒体已经跨越了传统的国家边界。"
+            },
+            {
+                en: "While some people regard it as reforming zeal, others regard it as recklessness.",
+                cn: "有人将其视为改革热情，也有人认为这是鲁莽之举。"
+            },
+            {
+                en: "There is a great deal of debate on that topic.",
+                cn: "关于该话题存在大量争议。"
+            },
+            {
+                en: "The marketing budget has been doubled since the beginning of the year.",
+                cn: "自年初以来，营销预算已翻倍。"
+            },
+            {
+                en: "We encourage students to complete their applications before the deadline.",
+                cn: "我们鼓励学生在截止日期前完成申请。"
+            },
+            {
+                en: "Lectures are the oldest and the most formal teaching method at university.",
+                cn: "讲座是大学里最古老、最正式的教学方式。"
+            },
+            {
+                en: "Research shows that exercising makes us feel better.",
+                cn: "研究表明，运动能让我们心情更愉悦。"
+            },
+            {
+                en: "The student shop sells a range of stationery.",
+                cn: "学生商店售卖各类文具。"
+            },
+            {
+                en: "It is a debate about the value of knowledge.",
+                cn: "这是一场关于知识价值的辩论。"
+            },
+            {
+                en: "Vocabulary that is peculiar in a special field is called jargon.",
+                cn: "某一特定领域特有的词汇被称为行话。"
+            },
+            {
+                en: "When the root system of a plant fails, foliage suffers.",
+                cn: "当植物的根系受损时，叶片会受到影响。"
+            },
+            {
+                en: "The course includes a combination of pure and applied mathematics.",
+                cn: "该课程涵盖纯数学与应用数学的结合内容。"
+            },
+            {
+                en: "A series of observations were carried out in the classroom.",
+                cn: "在教室里开展了一系列观察活动。"
+            },
+            {
+                en: "The library will be closed for staff training tomorrow morning.",
+                cn: "图书馆明天上午将因员工培训闭馆。"
+            },
+            {
+                en: "Plants are able to continue growing throughout their lives.",
+                cn: "植物能够终生持续生长。"
+            },
+            {
+                en: "We will discuss these two pictures in the next lecture.",
+                cn: "我们将在下一次讲座中讨论这两幅图片。"
+            },
+            {
+                en: "Students should take their time to study.",
+                cn: "学生应当从容不迫地学习。"
+            },
+            {
+                en: "Nurses can specialize in clinical work or management.",
+                cn: "护士可以专攻临床工作或管理领域。"
+            },
+            {
+                en: "The placement test of mathematics and statistics is offered every semester.",
+                cn: "数学与统计学分班测试每学期都会举行。"
+            },
+            {
+                en: "Strangely, people are simultaneously impressed by and skeptical about statistics.",
+                cn: "奇怪的是，人们对统计数据既印象深刻又持怀疑态度。"
+            },
+            {
+                en: "It is argued that students can learn more by collaboration rather than as individuals.",
+                cn: "有人认为，学生通过协作学习比独自学习能掌握更多知识。"
+            },
+            {
+                en: "Meteorology is the detailed study of the Earth's atmosphere.",
+                cn: "气象学是对地球大气层的详细研究。"
+            },
+            {
+                en: "And in that regard, as well as in other regards, it stands as an important contribution.",
+                cn: "无论在这一方面还是其他方面，它都堪称一项重要贡献。"
+            },
+            {
+                en: "Library reference desks hold a lot of materials on academic history.",
+                cn: "图书馆参考咨询台收藏了大量学术史相关资料。"
+            },
+            {
+                en: "The railway makes long-distance travel possible for everyone.",
+                cn: "铁路让每个人都能实现长途旅行。"
+            },
+            {
+                en: "There are some doubts about whether these events actually occurred.",
+                cn: "有人怀疑这些事件是否真的发生过。"
+            },
+            {
+                en: "Our courses help improve critical thinking and independent learning skills.",
+                cn: "我们的课程有助于提升批判性思维和自主学习能力。"
+            },
+            {
+                en: "Students are encouraged to monitor their own attendance.",
+                cn: "鼓励学生自行记录出勤情况。"
+            },
+            {
+                en: "Online courses allow students to work at their own pace.",
+                cn: "在线课程允许学生按照自己的节奏学习。"
+            }
+        ];
+
+        // 单词释义库（核心高频词）
+        const wordDictionary = {
+            "celebrated": {
+                pronunciation: "/ˈselɪbreɪtɪd/",
+                meaning: "adj. 著名的；有名望的；受赞誉的",
+                example: "例句：She is a celebrated pianist. (她是一位著名的钢琴家。)"
+            },
+            "theory": {
+                pronunciation: "/ˈθɪəri/",
+                meaning: "n. 理论；学说；原理；推测",
+                example: "例句：This theory has been proven correct. (这个理论已被证明是正确的。)"
+            },
+            "controversy": {
+                pronunciation: "/ˈkɒntrəvɜːsi/",
+                meaning: "n. 争论；辩论；论战",
+                example: "例句：The decision caused a lot of controversy. (这个决定引发了诸多争议。)"
+            },
+            "conference": {
+                pronunciation: "/ˈkɒnfərəns/",
+                meaning: "n. 会议；研讨会；讨论；联盟",
+                example: "例句：I'm attending a business conference tomorrow. (我明天要参加一个商务会议。)"
+            },
+            "volunteer": {
+                pronunciation: "/ˌvɒlənˈtɪə(r)/",
+                meaning: "n. 志愿者；志愿兵 adj. 志愿的 v. 自愿",
+                example: "例句：She works as a volunteer at the hospital. (她在医院做志愿者。)"
+            },
+            "confidence": {
+                pronunciation: "/ˈkɒnfɪdəns/",
+                meaning: "n. 信心；信任；秘密 adj. 骗取信任的；欺诈的",
+                example: "例句：Consumer confidence has a direct influence on sales. (消费者信心对销售额有直接影响。)"
+            },
+            "assessment": {
+                pronunciation: "/əˈsesmənt/",
+                meaning: "n. 评估；考核；评价；评定",
+                example: "例句：The key difference between courses is the kind of assessment. (不同课程的核心区别在于考核方式。)"
+            },
+            "semester": {
+                pronunciation: "/sɪˈmestə(r)/",
+                meaning: "n. 学期；半年",
+                example: "例句：All students are expected to attend ten lab sessions per semester. (所有学生每学期都要参加十次实验课。)"
+            },
+            "assignment": {
+                pronunciation: "/əˈsaɪnmənt/",
+                meaning: "n. 作业；任务；分配；指派",
+                example: "例句：The assignments should be submitted to the department office before the deadlines. (作业需在截止日期前提交至系办公室。)"
+            },
+            "lecture": {
+                pronunciation: "/ˈlektʃə(r)/",
+                meaning: "n. 讲座；演讲；讲课 v. 讲授；训斥",
+                example: "例句：We have a lecture in the morning on Thursday. (我们周四上午有一场讲座。)"
+            },
+            "tutorial": {
+                pronunciation: "/tjuːˈtɔːriəl/",
+                meaning: "n. 辅导课；教程；辅导材料 adj. 辅导的",
+                example: "例句：Optional tutorials are offered in the final week of the term. (学期最后一周会开设选修辅导课。)"
+            },
+            "economic": {
+                pronunciation: "/ˌiːkəˈnɒmɪk/",
+                meaning: "adj. 经济的；经济学的；合算的；有经济效益的",
+                example: "例句：Economic development needs to be supported by the government. (经济发展需要政府的支持。)"
+            },
+            "sustainable": {
+                pronunciation: "/səˈsteɪnəbl/",
+                meaning: "adj. 可以忍受的；足可支撑的；养得起的；可持续的",
+                example: "例句：Marine environments have been destroyed through pollution and unsustainable development. (海洋环境因污染和不可持续发展而遭到破坏。)"
+            },
+            "nutrition": {
+                pronunciation: "/njuˈtrɪʃn/",
+                meaning: "n. 营养；营养学；滋养；营养品",
+                example: "例句：Food containing ample calories provides little or no nutritional value. (热量充足的食物几乎没有营养价值。)"
+            },
+            "pronunciation": {
+                pronunciation: "/prəˌnʌnsiˈeɪʃn/",
+                meaning: "n. 发音；读法；发音方式",
+                example: "例句：The course will help students to improve their pronunciation skills. (这门课程将帮助学生提升发音技巧。)"
+            },
+            "accelerate": {
+                pronunciation: "/əkˈseləreɪt/",
+                meaning: "v. 加速；加快；促进；增速",
+                example: "例句：The school's summer programs help students to accelerate their studies. (学校的暑期项目帮助学生加快学习进度。)"
+            },
+            "critical": {
+                pronunciation: "/ˈkrɪtɪkl/",
+                meaning: "adj. 批评的；批判性的；挑剔的；关键的",
+                example: "例句：Our courses help improve critical thinking and independent learning skills. (我们的课程有助于提升批判性思维和自主学习能力。)"
+            },
+            "marketing": {
+                pronunciation: "/ˈmɑːkɪtɪŋ/",
+                meaning: "n. 市场营销；营销活动；销售学 v. 推销；促销",
+                example: "例句：When launching a product, investigating and marketing are very crucial. (推出产品时，市场调研和营销推广至关重要。)"
+            },
+            "statistics": {
+                pronunciation: "/stəˈtɪstɪks/",
+                meaning: "n. 统计；统计学；统计数据；统计资料",
+                example: "例句：Strangely, people are simultaneously impressed by and skeptical about statistics. (奇怪的是，人们对统计数据既印象深刻又持怀疑态度。)"
+            },
+            "atmosphere": {
+                pronunciation: "/ˈætməsfɪə(r)/",
+                meaning: "n. 大气；大气层；气氛；氛围",
+                example: "例句：Meteorology is the detailed study of the Earth's atmosphere. (气象学是对地球大气层的详细研究。)"
+            },
+            "migrate": {
+                pronunciation: "/maɪˈɡreɪt/",
+                meaning: "v. 迁徙；迁移；移居；转移",
+                example: "例句：Many birds migrate to warmer areas for the winter. (许多鸟类会迁徙到温暖的地区过冬。)"
+            },
+            "vulnerable": {
+                pronunciation: "/ˈvʌlnərəbl/",
+                meaning: "adj. 易受伤害的；脆弱的；易受攻击的；易受影响的",
+                example: "例句：Coastal communities are particularly vulnerable to rising sea levels. (沿海社区尤其容易受到海平面上升的影响。)"
+            },
+            "compound": {
+                pronunciation: "/ˈkɒmpaʊnd/",
+                meaning: "n. 化合物；复合物；复合词 adj. 复合的；混合的 v. 混合；调合",
+                example: "例句：Sugar is a compound including carbon, oxygen, and hydrogen atoms. (糖是一种包含碳、氧、氢原子的化合物。)"
+            },
+            "internship": {
+                pronunciation: "/ˈɪntɜːnʃɪp/",
+                meaning: "n. 实习；实习期；见习期",
+                example: "例句：The business policy seminar includes an internship with a local firm. (这门商业政策研讨会课程包含在本地企业的实习环节。)"
+            },
+            "prestigious": {
+                pronunciation: "/preˈstɪdʒəs/",
+                meaning: "adj. 有威望的；声誉高的；受尊敬的；卓越的",
+                example: "例句：He landed a job in a very prestigious law firm. (他在一家极具声望的律师事务所找到了工作。)"
+            },
+            "collaboration": {
+                pronunciation: "/kəˌlæbəˈreɪʃn/",
+                meaning: "n. 合作；协作；合作成果；合著",
+                example: "例句：It is argued that students can learn more by collaboration rather than as individuals. (有人认为，学生通过协作学习比独自学习能掌握更多知识。)"
+            },
+            "deadline": {
+                pronunciation: "/ˈdedlaɪn/",
+                meaning: "n. 截止日期；最后期限",
+                example: "例句：We encourage students to complete their applications before the deadline. (我们鼓励学生在截止日期前完成申请。)"
+            },
+            "marine": {
+                pronunciation: "/məˈriːn/",
+                meaning: "adj. 海的；海洋的；海事的；海运的 n. 水兵；海军陆战队士兵",
+                example: "例句：Marine environments have been destroyed through pollution and unsustainable development. (海洋环境因污染和不可持续发展而遭到破坏。)"
+            },
+            "optional": {
+                pronunciation: "/ˈɒpʃənl/",
+                meaning: "adj. 可选择的；选修的；随意的",
+                example: "例句：Optional tutorials are offered in the final week of the term. (学期最后一周会开设选修辅导课。)"
+            },
+            "essential": {
+                pronunciation: "/ɪˈsenʃl/",
+                meaning: "adj. 极其重要的；本质的；基本的 n. 必需品；要素；要点",
+                example: "例句：An introduction is an essential element of presentation. (引言是演示文稿的核心要素。)"
+            },
+            "practical": {
+                pronunciation: "/ˈpræktɪkl/",
+                meaning: "adj. 实际的；实用的；务实的；可用的 n. 实践课；实习课",
+                example: "例句：This course will teach engineering students practical skills and concepts. (这门课程将教授工程专业学生实用技能与核心概念。)"
+            },
+            "independent": {
+                pronunciation: "/ˌɪndɪˈpendənt/",
+                meaning: "adj. 独立的；自主的；不受约束的 n. 独立自主的人；无党派者",
+                example: "例句：Our courses help improve critical thinking and independent learning skills. (我们的课程有助于提升批判性思维和自主学习能力。)"
+            },
+            "meteorology": {
+                pronunciation: "/ˌmiːtiəˈrɒlədʒi/",
+                meaning: "n. 气象学；气象状态",
+                example: "例句：Meteorology is the detailed study of the Earth's atmosphere. (气象学是对地球大气层的详细研究。)"
+            },
+            "adapt": {
+                pronunciation: "/əˈdæpt/",
+                meaning: "v. 适应；改编；改写；使适应",
+                example: "例句：Farmers need to adapt to the changes in climate. (农民需要适应气候变化。)"
+            }
+        };
+
+        // 初始化
+        window.onload = function() {
+            // 生成或获取用户ID
+            initUserID();
+            
+            // 初始化排行榜数据
+            initRankingData();
+            
+            // 初始化打卡数据
+            initCheckinData();
+            
+            // 加载随机学习内容
+            refreshSentence();
+            
+            // 初始化拖动功能
+            initDrag();
+            
+            // 更新任务进度
+            updateTaskProgress();
+            
+            // 更新坚持天数显示
+            updateTaskStats();
+            
+            // 渲染排行榜
+            renderRankingList();
+            
+            // 绑定事件
+            document.getElementById('inputArea').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    checkAnswer();
+                }
+            });
+            
+            // 初始化点击粒子特效
+            initParticleEffect();
+        };
+
+        // 初始化用户ID（模拟基于IP的固定ID）
+        function initUserID() {
+            // 尝试从本地存储获取用户ID
+            userId = localStorage.getItem('englishLearningUserId');
+            
+            if (!userId) {
+                // 生成一个固定ID（模拟基于IP）
+                // 在实际项目中，这里应该通过API获取真实IP
+                const timestamp = new Date().getTime();
+                const randomNum = Math.floor(Math.random() * 10000);
+                userId = `user_${timestamp}_${randomNum}`;
+                localStorage.setItem('englishLearningUserId', userId);
+            }
+            
+            // 生成用户显示名称
+            if (localStorage.getItem('userName')) {
+                userDisplayName = localStorage.getItem('userName');
+            } else {
+                const randomIndex = Math.floor(Math.random() * userNameList.length);
+                userDisplayName = userNameList[randomIndex];
+                localStorage.setItem('userName', userDisplayName);
+            }
+            
+            // 显示当前用户ID
+            document.getElementById('currentUserId').textContent = `你：${userDisplayName} (积分: ${userPoints})`;
+        }
+
+        // 初始化排行榜数据（模拟从服务器获取）
+        function initRankingData() {
+            // 清空原有数据
+            rankingData = [];
+            
+            // 添加特殊用户
+            if (mockServerData["5201314"]) {
+                rankingData.push(mockServerData["5201314"]);
+            }
+            
+            // 生成虚拟用户数据（模拟其他用户）
+            userNameList.forEach(name => {
+                // 跳过当前用户
+                if (name === userDisplayName) return;
+                
+                // 随机生成数据
+                const randomDays = Math.floor(Math.random() * 50);
+                const randomSentences = randomDays * 5 + Math.floor(Math.random() * 5);
+                const randomPoints = randomSentences + (randomDays >= 7 ? 10 : 0);
+                
+                rankingData.push({
+                    name: name,
+                    days: randomDays,
+                    sentences: randomSentences,
+                    points: randomPoints
+                });
+            });
+            
+            // 添加当前用户数据
+            rankingData.push({
+                name: userDisplayName,
+                days: persistDays,
+                sentences: persistDays * 5 + dailyTaskCount,
+                points: userPoints
+            });
+            
+            // 按积分降序排序
+            rankingData.sort((a, b) => b.points - a.points);
+        }
+
+        // 渲染排行榜列表
+        function renderRankingList() {
+            const rankingList = document.getElementById('rankingList');
+            rankingList.innerHTML = '';
+            
+            rankingData.forEach((item, index) => {
+                const rankItem = document.createElement('div');
+                rankItem.className = 'ranking-item';
+                
+                // 为前三名添加特殊样式
+                let rankClass = '';
+                if (index === 0) rankClass = 'top1';
+                else if (index === 1) rankClass = 'top2';
+                else if (index === 2) rankClass = 'top3';
+                
+                // 突出显示当前用户
+                if (item.name === userDisplayName) {
+                    rankItem.style.background = 'rgba(255, 240, 245, 0.8)';
+                    rankItem.style.border = '1px solid #ffcccc';
+                }
+                
+                // 突出显示特殊用户
+                if (item.name === "香吻专属用户") {
+                    rankItem.style.background = 'rgba(255, 204, 204, 0.8)';
+                    rankItem.style.border = '1px solid #ff6666';
+                }
+                
+                rankItem.innerHTML = `
+                    <div class="rank-number ${rankClass}">${index + 1}</div>
+                    <div class="rank-info">
+                        <div class="rank-name">${item.name} ${item.name === "香吻专属用户" ? "💋" : ""}</div>
+                        <div class="rank-stats">
+                            <div class="rank-days">
+                                <span>📅</span> ${item.days}天
+                            </div>
+                            <div class="rank-sentences">
+                                <span>📖</span> ${item.sentences}句
+                            </div>
+                            <div class="rank-points">
+                                <span>⭐</span> ${item.points}分
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                rankingList.appendChild(rankItem);
+            });
+        }
+
+        // 更新当前用户排行榜数据
+        function updateUserRankingData() {
+            // 找到当前用户数据并更新
+            for (let i = 0; i < rankingData.length; i++) {
+                if (rankingData[i].name === userDisplayName) {
+                    rankingData[i].days = persistDays;
+                    rankingData[i].sentences = persistDays * 5 + dailyTaskCount;
+                    rankingData[i].points = userPoints;
+                    break;
+                }
+            }
+            
+            // 重新按积分排序
+            rankingData.sort((a, b) => b.points - a.points);
+            
+            // 重新渲染排行榜
+            renderRankingList();
+        }
+
+        // 初始化打卡数据
+        function initCheckinData() {
+            const today = new Date().toLocaleDateString();
+            // 如果最后打卡日期不是今天，重置今日任务数
+            if (lastCheckinDate !== today) {
+                dailyTaskCount = 0;
+                localStorage.setItem('lastCheckinDate', today);
+                localStorage.setItem('dailyTaskCount', 0);
+            } else {
+                // 恢复今日已完成数
+                dailyTaskCount = localStorage.getItem('dailyTaskCount') ? parseInt(localStorage.getItem('dailyTaskCount')) : 0;
+            }
+        }
+
+        // 刷新学习内容
+        function refreshSentence() {
+            createParticle(event); // 点击生成粒子
+            const randomIndex = Math.floor(Math.random() * learnSentences.length);
+            const sentenceItem = learnSentences[randomIndex];
+            currentSentence = sentenceItem.en;
+            currentSentenceChinese = sentenceItem.cn;
+            
+            // 处理英文句子，给每个单词添加可点击样式
+            const englishElement = document.getElementById('sentenceEnglish');
+            const words = currentSentence.split(' ');
+            let html = '';
+            
+            words.forEach(word => {
+                // 去除标点符号
+                const pureWord = word.replace(/[.,;:!?]/g, '').toLowerCase();
+                if (wordDictionary[pureWord]) {
+                    // 有释义的单词添加可点击样式
+                    html += `<span class="word-span" onclick="showWordModal('${pureWord}')">${word}</span> `;
+                } else {
+                    // 无释义的单词直接显示
+                    html += `${word} `;
+                }
+            });
+            
+            englishElement.innerHTML = html.trim();
+            document.getElementById('sentenceChinese').textContent = currentSentenceChinese;
+            
+            // 更新引导文案
+            document.getElementById('guideBar').textContent = `📖 请熟读当前句子，已完成 ${dailyTaskCount}/${dailyTaskTarget} 句，当前积分: ${userPoints}`;
+        }
+
+        // 初始化拖动面板
+        function initDrag() {
+            const panel = document.getElementById('floatingPanel');
+            panel.addEventListener('mousedown', function(e) {
+                createParticle(e); // 点击生成粒子
+                dragPanel = panel;
+                dragStartX = e.clientX - panel.offsetLeft;
+                dragStartY = e.clientY - panel.offsetTop;
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (dragPanel) {
+                    const x = e.clientX - dragStartX;
+                    const y = e.clientY - dragStartY;
+                    dragPanel.style.left = x + 'px';
+                    dragPanel.style.top = y + 'px';
+                    dragPanel.style.transform = 'none';
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                dragPanel = null;
+            });
+        }
+
+        // 显示单词释义弹窗
+        function showWordModal(word) {
+            createParticle(event); // 点击生成粒子
+            const wordData = wordDictionary[word];
+            if (!wordData) return;
+            
+            document.getElementById('wordName').textContent = word;
+            document.getElementById('wordPronunciation').textContent = wordData.pronunciation;
+            document.getElementById('wordMeaning').textContent = wordData.meaning;
+            document.getElementById('wordExample').textContent = wordData.example;
+            
+            document.getElementById('wordModal').style.display = 'flex';
+        }
+
+        // 关闭单词释义弹窗
+        function closeWordModal() {
+            createParticle(event); // 点击生成粒子
+            document.getElementById('wordModal').style.display = 'none';
+        }
+
+        // 触发默写弹窗
+        function triggerModalNow() {
+            createParticle(event); // 点击生成粒子
+            currentModalSentence = currentSentence;
+            currentModalChinese = currentSentenceChinese;
+            document.getElementById('inputArea').value = '';
+            document.getElementById('chineseHint').style.display = 'none';
+            document.getElementById('chineseHint').textContent = '';
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        // 切换中文提示显示
+        function toggleChineseHint() {
+            createParticle(event); // 点击生成粒子
+            const hintElement = document.getElementById('chineseHint');
+            if (hintElement.style.display === 'none' || hintElement.style.display === '') {
+                hintElement.textContent = `中文翻译：${currentModalChinese}`;
+                hintElement.style.display = 'block';
+            } else {
+                hintElement.style.display = 'none';
+            }
+        }
+
+        // 关闭默写弹窗
+        function closeModal() {
+            createParticle(event); // 点击生成粒子
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // 校对默写结果
+        function checkAnswer() {
+            createParticle(event); // 点击生成粒子
+            const userInput = document.getElementById('inputArea').value.trim().toLowerCase();
+            const correctAnswer = currentModalSentence.trim().toLowerCase();
+            const resultAlert = document.getElementById('resultAlert');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultContent = document.getElementById('resultContent');
+
+            if (userInput === correctAnswer) {
+                // 回答正确，更新任务数和积分
+                dailyTaskCount++;
+                userPoints += 1; // 每个正确句子+1积分
+                localStorage.setItem('dailyTaskCount', dailyTaskCount);
+                localStorage.setItem('userPoints', userPoints);
+                
+                resultTitle.className = 'result-title result-correct';
+                resultTitle.textContent = '✅ 记忆完全正确！';
+                resultContent.textContent = `原文：${currentModalSentence}\n\n✅ 获得 +1 积分！\n已完成 ${dailyTaskCount}/${dailyTaskTarget} 句\n当前积分: ${userPoints}`;
+                
+                // 更新任务进度
+                updateTaskProgress();
+                updateTaskStats();
+                
+                // 更新排行榜数据
+                updateUserRankingData();
+                
+                // 检查是否完成今日任务
+                if (dailyTaskCount >= dailyTaskTarget) {
+                    // 完成每日任务额外奖励积分
+                    userPoints += 5;
+                    localStorage.setItem('userPoints', userPoints);
+                    completeDailyTask();
+                }
+            } else {
+                resultTitle.className = 'result-title result-error';
+                resultTitle.textContent = '❌ 记忆有错误哦！';
+                resultContent.textContent = `你的输入：${userInput}\n正确原文：${currentModalSentence}`;
+            }
+
+            // 显示结果
+            document.getElementById('modal').style.display = 'none';
+            resultAlert.style.display = 'block';
+            
+            // 自动更换新句子
+            setTimeout(refreshSentence, 500);
+        }
+
+        // 关闭结果提示
+        function closeResultAlert() {
+            createParticle(event); // 点击生成粒子
+            document.getElementById('resultAlert').style.display = 'none';
+        }
+
+        // 更新任务进度
+        function updateTaskProgress() {
+            const progressPercent = (dailyTaskCount / dailyTaskTarget) * 100;
+            document.getElementById('progressFill').style.width = `${progressPercent}%`;
+            document.getElementById('progressText').textContent = `${dailyTaskCount}/${dailyTaskTarget}`;
+            document.getElementById('guideBar').textContent = `📖 请熟读当前句子，已完成 ${dailyTaskCount}/${dailyTaskTarget} 句，当前积分: ${userPoints}`;
+        }
+
+        // 更新任务统计
+        function updateTaskStats() {
+            document.getElementById('taskStats').textContent = `已坚持 ${persistDays} 天 | 积分: ${userPoints}`;
+            document.getElementById('currentUserId').textContent = `你：${userDisplayName} (积分: ${userPoints})`;
+        }
+
+        // 完成今日任务
+        function completeDailyTask() {
+            const today = new Date().toLocaleDateString();
+            // 如果今天还没打卡，增加坚持天数
+            if (lastCheckinDate === today && !localStorage.getItem('checkedInToday')) {
+                persistDays++;
+                localStorage.setItem('persistDays', persistDays);
+                localStorage.setItem('checkedInToday', 'true');
+                
+                // 连续打卡7天额外奖励
+                if (persistDays % 7 === 0) {
+                    userPoints += 10;
+                    localStorage.setItem('userPoints', userPoints);
+                }
+                
+                updateTaskStats();
+                
+                // 更新排行榜数据
+                updateUserRankingData();
+            }
+            
+            // 显示打卡成功弹窗
+            document.getElementById('checkinText').textContent = `你已坚持学习 ${persistDays} 天，获得 +5 积分奖励！\n当前总积分: ${userPoints}`;
+            document.getElementById('checkinAlert').style.display = 'block';
+            
+            // 重置任务进度（视觉上）
+            document.getElementById('progressFill').style.width = '100%';
+            document.getElementById('guideBar').textContent = `🎉 恭喜完成今日5句学习任务，获得 +5 积分奖励！`;
+        }
+
+        // 关闭打卡成功弹窗
+        function closeCheckinAlert() {
+            createParticle(event); // 点击生成粒子
+            document.getElementById('checkinAlert').style.display = 'none';
+        }
+
+        // 显示积分说明弹窗
+        function showPointsModal() {
+            createParticle(event); // 点击生成粒子
+            document.getElementById('pointsModal').style.display = 'flex';
+        }
+
+        // 关闭积分说明弹窗
+        function closePointsModal() {
+            createParticle(event); // 点击生成粒子
+            document.getElementById('pointsModal').style.display = 'none';
+        }
+
+        // 初始化粒子特效（樱花/星星）
+        function initParticleEffect() {
+            const container = document.getElementById('particle-container');
+            
+            // 全局点击生成粒子
+            document.addEventListener('click', function(e) {
+                createParticle(e);
+            });
+        }
+
+        // 创建粒子（樱花/星星）
+        function createParticle(e) {
+            if (!e) return;
+            
+            const container = document.getElementById('particle-container');
+            const particleCount = 15; // 粒子数量
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                
+                // 随机选择樱花或星星
+                const isCherry = Math.random() > 0.5;
+                const size = Math.random() * 10 + 5;
+                
+                // 设置粒子样式
+                particle.style.position = 'absolute';
+                particle.style.left = `${e.clientX}px`;
+                particle.style.top = `${e.clientY}px`;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.borderRadius = isCherry ? '50% 0 50% 50%' : '50%';
+                particle.style.backgroundColor = isCherry 
+                    ? `rgba(${255}, ${Math.floor(Math.random()*50)+200}, ${Math.floor(Math.random()*50)+200}, ${Math.random()*0.8+0.2})`
+                    : `rgba(${Math.floor(Math.random()*50)+200}, ${Math.floor(Math.random()*50)+200}, ${255}, ${Math.random()*0.8+0.2})`;
+                particle.style.opacity = '0';
+                particle.style.pointerEvents = 'none';
+                particle.style.zIndex = '99999';
+                particle.style.transform = 'translate(-50%, -50%)';
+                particle.style.animation = `particleFly ${Math.random()*2+1}s ease forwards`;
+                
+                // 随机方向和距离
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 100 + 50;
+                const x = Math.cos(angle) * distance;
+                const y = Math.sin(angle) * distance;
+                
+                // 添加动画关键帧
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    @keyframes particleFly {
+                        0% {
+                            opacity: 1;
+                            transform: translate(-50%, -50%) scale(1);
+                        }
+                        50% {
+                            opacity: 0.8;
+                            transform: translate(${x}px, ${y}px) scale(0.8);
+                        }
+                        100% {
+                            opacity: 0;
+                            transform: translate(${x*1.5}px, ${y*1.5}px) scale(0);
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                container.appendChild(particle);
+                
+                // 移除粒子
+                setTimeout(() => {
+                    particle.remove();
+                    style.remove();
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
