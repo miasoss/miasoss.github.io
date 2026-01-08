@@ -951,7 +951,7 @@
             </div>
         </div>
         <div style="text-align: center; margin-top: 10px;">
-            <button class="btn btn-points" onclick="showPointsModal()" style="padding: 8px 15px; font-size: 13px;">📋 积分兑换说明</button>
+            <button class="btn btn-points" onclick="learning.showPointsModal()" style="padding: 8px 15px; font-size: 13px;">📋 积分兑换说明</button>
         </div>
     </div>
 
@@ -979,9 +979,9 @@
             <div class="progress-text" id="progressText">0/5</div>
         </div>
         <div class="task-actions">
-            <button class="btn btn-secondary" onclick="refreshSentence()" disabled>更换句子</button>
-            <button class="btn btn-primary" onclick="triggerModalNow()" disabled>开始默写</button>
-            <button class="btn btn-points" onclick="showPointsModal()">积分说明</button>
+            <button class="btn btn-secondary" onclick="learning.refreshSentence()" disabled>更换句子</button>
+            <button class="btn btn-primary" onclick="learning.triggerModalNow()" disabled>开始默写</button>
+            <button class="btn btn-points" onclick="learning.showPointsModal()">积分说明</button>
         </div>
     </div>
 
@@ -990,11 +990,11 @@
         <div class="modal-content">
             <div class="modal-title">✍️ 请默写当前学习的句子</div>
             <div class="chinese-hint" id="chineseHint"></div>
-            <button class="btn btn-chinese" onclick="toggleChineseHint()">显示中文提示</button>
+            <button class="btn btn-chinese" onclick="learning.toggleChineseHint()">显示中文提示</button>
             <textarea class="input-area" id="inputArea" placeholder="请输入你记忆的句子..."></textarea>
             <div class="btn-group">
-                <button class="btn btn-primary" onclick="checkAnswer()">提交校对</button>
-                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="learning.checkAnswer()">提交校对</button>
+                <button class="btn btn-secondary" onclick="learning.closeModal()">取消</button>
             </div>
         </div>
     </div>
@@ -1003,7 +1003,7 @@
     <div class="result-alert" id="resultAlert">
         <div class="result-title" id="resultTitle"></div>
         <div class="result-text" id="resultContent"></div>
-        <button class="btn-close" onclick="closeResultAlert()">确定</button>
+        <button class="btn-close" onclick="learning.closeResultAlert()">确定</button>
     </div>
 
     <!-- 打卡成功弹窗 -->
@@ -1011,7 +1011,7 @@
         <div class="checkin-icon">🎉</div>
         <div class="checkin-title">恭喜完成今日打卡！</div>
         <div class="checkin-text" id="checkinText">你已坚持学习 0 天，继续加油！</div>
-        <button class="btn-close" style="background: white; color: #ff6699;" onclick="closeCheckinAlert()">太棒了！</button>
+        <button class="btn-close" style="background: white; color: #ff6699;" onclick="learning.closeCheckinAlert()">太棒了！</button>
     </div>
 
     <!-- 单词释义弹窗 -->
@@ -1019,7 +1019,7 @@
         <div class="word-modal-content">
             <div class="word-header">
                 <div class="word-name" id="wordName"></div>
-                <button class="word-close" onclick="closeWordModal()">×</button>
+                <button class="word-close" onclick="learning.closeWordModal()">×</button>
             </div>
             <div class="word-pronunciation" id="wordPronunciation"></div>
             <div class="word-meaning" id="wordMeaning"></div>
@@ -1061,716 +1061,38 @@
                 <p>4. 积分永久有效，不清零</p>
             </div>
             <div class="btn-group">
-                <button class="btn btn-primary" onclick="closePointsModal()">我知道了</button>
+                <button class="btn btn-primary" onclick="learning.closePointsModal()">我知道了</button>
             </div>
         </div>
     </div>
 
+    <!-- 引入模块化JavaScript文件 -->
+    <script src="utils.js"></script>
+    <script src="content.js"></script>
+    <script src="auth.js"></script>
+    <script src="learning.js"></script>
+    
     <script>
-        // ========== Supabase 配置 ==========
-        // 请确保已替换为您的真实 Supabase 信息
-        const SUPABASE_URL = 'https://qwjluoxicuhqrneysoqv.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3amx1b3hpY3VocXJuZXlzb3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMTQyNjIsImV4cCI6MjA4MTY5MDI2Mn0.UrX6Dhvvd5dtbAolnpAKpNetCPiIEQOpp5CYrvRlfxA';
-        
-        // 初始化 Supabase 客户端
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // ========== 全局变量 ==========
-        let currentUser = null;
-        let currentSentence = "";
-        let currentSentenceChinese = "";
-        let dragPanel = null;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let currentModalSentence = "";
-        let currentModalChinese = "";
-        
-        // 每日任务数据
-        let dailyTaskCount = 0;
-        const dailyTaskTarget = 5;
-        let persistDays = 0;
-        let lastCheckinDate = "";
-        let userPoints = 0;
-        
-        // 用户名列表（必须在名单中选择）
-        const allowedUsernames = ["昊昊", "朋朋", "党党", "金金", "淼淼", "文文", "静静", "瑶瑶", "杰杰", "楠楠", "萌萌", "姜姜", "真真", "东东", "羊羊"];
-
-        // ========== 初始化函数 ==========
+        // 全局初始化
         window.onload = async function() {
-            // 绑定登录按钮事件
-            document.getElementById('loginBtn').addEventListener('click', handleLogin);
+            // 等待所有模块加载完成
+            await auth.initialize();
             
-            // 检查是否有现有会话
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (session?.user) {
-                // 已登录，获取用户信息
-                await fetchUserProfile(session.user.id);
-            } else {
-                // 未登录，确保登录面板显示
-                document.getElementById('loginPanel').style.display = 'flex';
-                disableLearningFeatures();
-            }
-            
-            // 初始化粒子特效
-            initParticleEffect();
-            
-            // 绑定文本框回车事件
-            document.getElementById('inputArea').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    checkAnswer();
-                }
-            });
-            
-            // 绑定密码框回车事件
+            // 绑定事件
+            document.getElementById('loginBtn').addEventListener('click', auth.handleLogin);
             document.getElementById('passwordInput').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleLogin();
+                    auth.handleLogin();
+                }
+            });
+            document.getElementById('inputArea').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    learning.checkAnswer();
                 }
             });
         };
-
-        // ========== 登录/注册处理 ==========
-        async function handleLogin() {
-            const username = document.getElementById('usernameSelect').value;
-            const password = document.getElementById('passwordInput').value;
-            const messageEl = document.getElementById('loginMessage');
-            
-            // 验证输入
-            if (!username) {
-                messageEl.textContent = '请从名单中选择一个昵称！';
-                messageEl.className = 'login-message';
-                return;
-            }
-            
-            if (!password || password.length < 3) {
-                messageEl.textContent = '密码至少需要3个字符！';
-                messageEl.className = 'login-message';
-                return;
-            }
-            
-            // 检查用户名是否在允许的名单中
-            if (!allowedUsernames.includes(username)) {
-                messageEl.textContent = '昵称不在允许的名单中！';
-                messageEl.className = 'login-message';
-                return;
-            }
-            
-            messageEl.textContent = '处理中...';
-            messageEl.className = 'login-message';
-            
-            try {
-                // 使用"用户名@englishlearner.com"作为邮箱
-                const email = `${username}@englishlearner.com`;
-                
-                // 尝试登录
-                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-                
-                if (loginError) {
-                    // 如果是凭证错误，尝试注册
-                    if (loginError.message.includes('Invalid login credentials')) {
-                        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                            email: email,
-                            password: password,
-                            options: {
-                                data: {
-                                    username: username,
-                                    points: 0,
-                                    days: 0,
-                                    sentences: 0,
-                                    created_at: new Date().toISOString()
-                                }
-                            }
-                        });
-                        
-                        if (signUpError) {
-                            if (signUpError.message.includes('User already registered')) {
-                                messageEl.textContent = '该昵称已被注册，请使用密码登录或选择其他昵称！';
-                            } else {
-                                throw signUpError;
-                            }
-                            return;
-                        }
-                        
-                        // 注册成功
-                        await fetchUserProfile(signUpData.user.id);
-                        messageEl.textContent = '注册成功！正在进入学习...';
-                        messageEl.className = 'login-message login-success';
-                    } else {
-                        throw loginError;
-                    }
-                } else {
-                    // 登录成功
-                    await fetchUserProfile(loginData.user.id);
-                    messageEl.textContent = '登录成功！正在进入学习...';
-                    messageEl.className = 'login-message login-success';
-                }
-                
-                // 延迟1秒后进入学习界面
-                setTimeout(() => {
-                    document.getElementById('loginPanel').style.display = 'none';
-                    enableLearningFeatures();
-                    refreshSentence();
-                    initDrag();
-                    updateTaskProgress();
-                    fetchAllUsersRanking();
-                }, 1000);
-                
-            } catch (error) {
-                console.error('登录/注册错误:', error);
-                messageEl.textContent = '操作失败：' + (error.message || '未知错误');
-                messageEl.className = 'login-message';
-            }
-        }
-
-        // ========== 用户资料管理 ==========
-        async function fetchUserProfile(userId) {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                
-                if (user) {
-                    currentUser = {
-                        id: user.id,
-                        username: user.user_metadata?.username || '未知用户',
-                        points: user.user_metadata?.points || 0,
-                        days: user.user_metadata?.days || 0,
-                        sentences: user.user_metadata?.sentences || 0
-                    };
-                    
-                    userPoints = currentUser.points;
-                    persistDays = currentUser.days;
-                    
-                    // 从本地存储恢复今日任务数
-                    const today = new Date().toLocaleDateString();
-                    const storedDate = localStorage.getItem('lastCheckinDate');
-                    if (storedDate === today) {
-                        dailyTaskCount = localStorage.getItem('dailyTaskCount') ? parseInt(localStorage.getItem('dailyTaskCount')) : 0;
-                    } else {
-                        dailyTaskCount = 0;
-                    }
-                    
-                    updateTaskStats();
-                    document.getElementById('currentUserId').textContent = `你：${currentUser.username} (积分: ${userPoints})`;
-                }
-            } catch (error) {
-                console.error('获取用户信息失败:', error);
-            }
-        }
-
-        async function updateUserProfile() {
-            if (!currentUser) return;
-            
-            try {
-                const { error } = await supabase.auth.updateUser({
-                    data: { 
-                        points: userPoints,
-                        days: persistDays,
-                        sentences: persistDays * 5 + dailyTaskCount,
-                        last_updated: new Date().toISOString()
-                    }
-                });
-                
-                if (error) throw error;
-                
-                // 更新本地currentUser对象
-                currentUser.points = userPoints;
-                currentUser.days = persistDays;
-                currentUser.sentences = persistDays * 5 + dailyTaskCount;
-                
-            } catch (error) {
-                console.error('更新用户资料失败:', error);
-            }
-        }
-
-        // ========== 积分管理 ==========
-        async function addUserPoints(pointsToAdd) {
-            if (!currentUser) return;
-            
-            userPoints += pointsToAdd;
-            
-            // 保存今日任务数到本地存储
-            const today = new Date().toLocaleDateString();
-            localStorage.setItem('dailyTaskCount', dailyTaskCount);
-            localStorage.setItem('lastCheckinDate', today);
-            
-            // 更新用户资料（云端）
-            await updateUserProfile();
-            
-            // 更新界面
-            updateTaskStats();
-            document.getElementById('currentUserId').textContent = `你：${currentUser.username} (积分: ${userPoints})`;
-            
-            // 更新排行榜
-            await fetchAllUsersRanking();
-        }
-
-        // ========== 排行榜管理 ==========
-        async function fetchAllUsersRanking() {
-            try {
-                // 在实际项目中，这里应该查询所有用户
-                // 由于Supabase Auth表不能直接查询所有用户，我们使用模拟数据+当前用户
-                
-                // 模拟一些用户数据
-                const mockUsers = [
-                    { username: "昊昊", points: 156, days: 31, sentences: 155 },
-                    { username: "朋朋", points: 142, days: 28, sentences: 142 },
-                    { username: "文文", points: 128, days: 25, sentences: 128 },
-                    { username: "静静", points: 115, days: 23, sentences: 115 },
-                    { username: "瑶瑶", points: 98, days: 19, sentences: 98 },
-                    { username: "杰杰", points: 87, days: 17, sentences: 87 },
-                    { username: "楠楠", points: 76, days: 15, sentences: 76 },
-                    { username: "羊羊", points: 65, days: 13, sentences: 65 }
-                ];
-                
-                // 添加当前用户
-                const allUsers = [...mockUsers];
-                if (currentUser) {
-                    allUsers.push({
-                        username: currentUser.username,
-                        points: currentUser.points,
-                        days: currentUser.days,
-                        sentences: currentUser.days * 5 + dailyTaskCount
-                    });
-                }
-                
-                // 按积分排序
-                allUsers.sort((a, b) => b.points - a.points);
-                
-                // 渲染排行榜
-                renderRankingList(allUsers);
-                
-            } catch (error) {
-                console.error('获取排行榜数据失败:', error);
-            }
-        }
-
-        function renderRankingList(users) {
-            const rankingList = document.getElementById('rankingList');
-            
-            if (!users || users.length === 0) {
-                rankingList.innerHTML = `
-                    <div style="text-align: center; padding: 40px 20px; color: #8a7d74;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">📊</div>
-                        <div>暂无排行榜数据</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            rankingList.innerHTML = '';
-            
-            users.forEach((user, index) => {
-                const rankItem = document.createElement('div');
-                rankItem.className = 'ranking-item';
-                
-                // 为前三名添加特殊样式
-                let rankClass = '';
-                if (index === 0) rankClass = 'top1';
-                else if (index === 1) rankClass = 'top2';
-                else if (index === 2) rankClass = 'top3';
-                
-                // 突出显示当前用户
-                const isCurrentUser = currentUser && user.username === currentUser.username;
-                if (isCurrentUser) {
-                    rankItem.style.background = 'rgba(255, 240, 245, 0.8)';
-                    rankItem.style.border = '1px solid #ffcccc';
-                }
-                
-                rankItem.innerHTML = `
-                    <div class="rank-number ${rankClass}">${index + 1}</div>
-                    <div class="rank-info">
-                        <div class="rank-name">${user.username} ${isCurrentUser ? '👤' : ''}</div>
-                        <div class="rank-stats">
-                            <div class="rank-days">
-                                <span>📅</span> ${user.days}天
-                            </div>
-                            <div class="rank-sentences">
-                                <span>📖</span> ${user.sentences}句
-                            </div>
-                            <div class="rank-points">
-                                <span>⭐</span> ${user.points}分
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                rankingList.appendChild(rankItem);
-            });
-        }
-
-        // ========== 学习功能管理 ==========
-        function disableLearningFeatures() {
-            document.querySelector('.btn-secondary').disabled = true;
-            document.querySelector('.btn-primary').disabled = true;
-        }
-
-        function enableLearningFeatures() {
-            document.querySelector('.btn-secondary').disabled = false;
-            document.querySelector('.btn-primary').disabled = false;
-        }
-
-        // ========== 学习内容库（保持不变）==========
-        const learnSentences = [
-            {
-                en: "The celebrated theory is still the source of great controversy.",
-                cn: "这个著名的理论仍然是巨大争议的根源。"
-            },
-            {
-                en: "A group meeting will be held tomorrow in the library conference room.",
-                cn: "明天将在图书馆会议室举行小组会议。"
-            },
-            {
-                en: "The company's rapid expansion has led to some growing pains.",
-                cn: "公司的快速扩张带来了一些成长中的阵痛。"
-            },
-            {
-                en: "She proposed an innovative approach to solving the problem.",
-                cn: "她提出了一个创新性的解决问题的方法。"
-            },
-            {
-                en: "The research findings were published in a prestigious journal.",
-                cn: "研究结果发表在一本著名的期刊上。"
-            },
-            {
-                en: "He demonstrated remarkable resilience in the face of adversity.",
-                cn: "面对逆境，他展现了非凡的韧性。"
-            },
-            {
-                en: "The committee will review all applications by the end of the month.",
-                cn: "委员会将在月底前审查所有申请。"
-            },
-            {
-                en: "Environmental protection should be a priority for every government.",
-                cn: "环境保护应该是每个政府的优先事项。"
-            },
-            {
-                en: "The new policy aims to promote sustainable development.",
-                cn: "新政策旨在促进可持续发展。"
-            },
-            {
-                en: "Her presentation was both informative and engaging.",
-                cn: "她的演讲既有信息量又有吸引力。"
-            }
-        ];
-
-        const wordDictionary = {
-            "celebrated": {
-                pronunciation: "/ˈselɪbreɪtɪd/",
-                meaning: "adj. 著名的；有名望的；受赞誉的",
-                example: "例句：She is a celebrated pianist. (她是一位著名的钢琴家。)"
-            },
-            "theory": {
-                pronunciation: "/ˈθɪəri/",
-                meaning: "n. 理论；学说；原理",
-                example: "例句：Einstein's theory of relativity changed physics. (爱因斯坦的相对论改变了物理学。)"
-            },
-            "controversy": {
-                pronunciation: "/ˈkɒntrəvɜːsi/",
-                meaning: "n. 争议；争论；辩论",
-                example: "例句：The new law caused much controversy. (新法律引起了很多争议。)"
-            },
-            "expansion": {
-                pronunciation: "/ɪkˈspænʃn/",
-                meaning: "n. 扩张；扩大；扩展",
-                example: "例句：The company's expansion into new markets was successful. (公司向新市场的扩张很成功。)"
-            },
-            "innovative": {
-                pronunciation: "/ˈɪnəveɪtɪv/",
-                meaning: "adj. 创新的；革新的",
-                example: "例句：They developed an innovative solution to the problem. (他们提出了一个创新的解决方案。)"
-            },
-            "prestigious": {
-                pronunciation: "/preˈstɪdʒəs/",
-                meaning: "adj. 有威望的；有声望的；受尊敬的",
-                example: "例句：He graduated from a prestigious university. (他毕业于一所名牌大学。)"
-            },
-            "resilience": {
-                pronunciation: "/rɪˈzɪliəns/",
-                meaning: "n. 韧性；恢复力；适应力",
-                example: "例句：Children often show remarkable resilience. (孩子们通常表现出非凡的韧性。)"
-            },
-            "sustainable": {
-                pronunciation: "/səˈsteɪnəbl/",
-                meaning: "adj. 可持续的；能维持的",
-                example: "例句：We need to find sustainable energy sources. (我们需要找到可持续的能源。)"
-            },
-            "informative": {
-                pronunciation: "/ɪnˈfɔːmətɪv/",
-                meaning: "adj. 提供信息的；增长见闻的",
-                example: "例句：The documentary was very informative. (这部纪录片信息量很大。)"
-            },
-            "engaging": {
-                pronunciation: "/ɪnˈɡeɪdʒɪŋ/",
-                meaning: "adj. 迷人的；有吸引力的；有趣的",
-                example: "例句：He is an engaging speaker. (他是一位有吸引力的演讲者。)"
-            }
-        };
-
-        // ========== 原有学习功能函数（稍作修改）==========
-        function refreshSentence() {
-            if (!currentUser) return;
-            
-            createParticle(event);
-            const randomIndex = Math.floor(Math.random() * learnSentences.length);
-            const sentenceItem = learnSentences[randomIndex];
-            currentSentence = sentenceItem.en;
-            currentSentenceChinese = sentenceItem.cn;
-            
-            // 处理英文句子
-            const englishElement = document.getElementById('sentenceEnglish');
-            const words = currentSentence.split(' ');
-            let html = '';
-            
-            words.forEach(word => {
-                const pureWord = word.replace(/[.,;:!?]/g, '').toLowerCase();
-                if (wordDictionary[pureWord]) {
-                    html += `<span class="word-span" onclick="showWordModal('${pureWord}')">${word}</span> `;
-                } else {
-                    html += `${word} `;
-                }
-            });
-            
-            englishElement.innerHTML = html.trim();
-            document.getElementById('sentenceChinese').textContent = currentSentenceChinese;
-            
-            document.getElementById('guideBar').textContent = `📖 请熟读当前句子，已完成 ${dailyTaskCount}/${dailyTaskTarget} 句，当前积分: ${userPoints}`;
-        }
-
-        function initDrag() {
-            const panel = document.getElementById('floatingPanel');
-            panel.addEventListener('mousedown', function(e) {
-                createParticle(e);
-                dragPanel = panel;
-                dragStartX = e.clientX - panel.offsetLeft;
-                dragStartY = e.clientY - panel.offsetTop;
-                e.preventDefault();
-            });
-
-            document.addEventListener('mousemove', function(e) {
-                if (dragPanel) {
-                    const x = e.clientX - dragStartX;
-                    const y = e.clientY - dragStartY;
-                    dragPanel.style.left = x + 'px';
-                    dragPanel.style.top = y + 'px';
-                    dragPanel.style.transform = 'none';
-                }
-            });
-
-            document.addEventListener('mouseup', function() {
-                dragPanel = null;
-            });
-        }
-
-        function showWordModal(word) {
-            if (!currentUser) return;
-            
-            createParticle(event);
-            const wordData = wordDictionary[word];
-            if (!wordData) return;
-            
-            document.getElementById('wordName').textContent = word;
-            document.getElementById('wordPronunciation').textContent = wordData.pronunciation;
-            document.getElementById('wordMeaning').textContent = wordData.meaning;
-            document.getElementById('wordExample').textContent = wordData.example;
-            
-            document.getElementById('wordModal').style.display = 'flex';
-        }
-
-        function closeWordModal() {
-            createParticle(event);
-            document.getElementById('wordModal').style.display = 'none';
-        }
-
-        function triggerModalNow() {
-            if (!currentUser) {
-                alert('请先登录！');
-                document.getElementById('loginPanel').style.display = 'flex';
-                return;
-            }
-            
-            createParticle(event);
-            currentModalSentence = currentSentence;
-            currentModalChinese = currentSentenceChinese;
-            document.getElementById('inputArea').value = '';
-            document.getElementById('chineseHint').style.display = 'none';
-            document.getElementById('chineseHint').textContent = '';
-            document.getElementById('modal').style.display = 'flex';
-        }
-
-        function toggleChineseHint() {
-            createParticle(event);
-            const hintElement = document.getElementById('chineseHint');
-            if (hintElement.style.display === 'none' || hintElement.style.display === '') {
-                hintElement.textContent = `中文翻译：${currentModalChinese}`;
-                hintElement.style.display = 'block';
-            } else {
-                hintElement.style.display = 'none';
-            }
-        }
-
-        function closeModal() {
-            createParticle(event);
-            document.getElementById('modal').style.display = 'none';
-        }
-
-        async function checkAnswer() {
-            if (!currentUser) return;
-            
-            createParticle(event);
-            const userInput = document.getElementById('inputArea').value.trim().toLowerCase();
-            const correctAnswer = currentModalSentence.trim().toLowerCase();
-            const resultAlert = document.getElementById('resultAlert');
-            const resultTitle = document.getElementById('resultTitle');
-            const resultContent = document.getElementById('resultContent');
-
-            if (userInput === correctAnswer) {
-                // 回答正确
-                dailyTaskCount++;
-                
-                // 添加积分
-                await addUserPoints(1);
-                
-                resultTitle.className = 'result-title result-correct';
-                resultTitle.textContent = '✅ 记忆完全正确！';
-                resultContent.textContent = `原文：${currentModalSentence}\n\n✅ 获得 +1 积分！\n已完成 ${dailyTaskCount}/${dailyTaskTarget} 句\n当前积分: ${userPoints}`;
-                
-                // 更新任务进度
-                updateTaskProgress();
-                
-                // 检查是否完成今日任务
-                if (dailyTaskCount >= dailyTaskTarget) {
-                    // 完成每日任务额外奖励积分
-                    await addUserPoints(5);
-                    
-                    // 增加坚持天数
-                    const today = new Date().toLocaleDateString();
-                    if (lastCheckinDate !== today) {
-                        persistDays++;
-                        lastCheckinDate = today;
-                        localStorage.setItem('persistDays', persistDays);
-                        
-                        // 连续打卡7天额外奖励
-                        if (persistDays % 7 === 0) {
-                            await addUserPoints(10);
-                        }
-                        
-                        // 更新用户资料
-                        await updateUserProfile();
-                    }
-                    
-                    // 显示打卡成功
-                    document.getElementById('checkinText').textContent = `你已坚持学习 ${persistDays} 天，获得 +5 积分奖励！\n当前总积分: ${userPoints}`;
-                    document.getElementById('checkinAlert').style.display = 'block';
-                    
-                    // 重置每日计数
-                    dailyTaskCount = 0;
-                    localStorage.setItem('dailyTaskCount', 0);
-                }
-            } else {
-                resultTitle.className = 'result-title result-error';
-                resultTitle.textContent = '❌ 记忆有错误哦！';
-                resultContent.textContent = `你的输入：${userInput}\n正确原文：${currentModalSentence}`;
-            }
-
-            document.getElementById('modal').style.display = 'none';
-            resultAlert.style.display = 'block';
-            
-            setTimeout(refreshSentence, 500);
-        }
-
-        function closeResultAlert() {
-            createParticle(event);
-            document.getElementById('resultAlert').style.display = 'none';
-        }
-
-        function updateTaskProgress() {
-            const progressPercent = (dailyTaskCount / dailyTaskTarget) * 100;
-            document.getElementById('progressFill').style.width = `${progressPercent}%`;
-            document.getElementById('progressText').textContent = `${dailyTaskCount}/${dailyTaskTarget}`;
-            document.getElementById('guideBar').textContent = `📖 请熟读当前句子，已完成 ${dailyTaskCount}/${dailyTaskTarget} 句，当前积分: ${userPoints}`;
-        }
-
-        function updateTaskStats() {
-            document.getElementById('taskStats').textContent = `已坚持 ${persistDays} 天 | 积分: ${userPoints}`;
-        }
-
-        function closeCheckinAlert() {
-            createParticle(event);
-            document.getElementById('checkinAlert').style.display = 'none';
-            updateTaskProgress();
-        }
-
-        function showPointsModal() {
-            createParticle(event);
-            document.getElementById('pointsModal').style.display = 'flex';
-        }
-
-        function closePointsModal() {
-            createParticle(event);
-            document.getElementById('pointsModal').style.display = 'none';
-        }
-
-        // ========== 粒子特效（保持不变）==========
-        function initParticleEffect() {
-            document.addEventListener('click', function(e) {
-                createParticle(e);
-            });
-        }
-
-        function createParticle(e) {
-            if (!e) return;
-            
-            const container = document.getElementById('particle-container');
-            const particleCount = 15;
-            
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                const isCherry = Math.random() > 0.5;
-                const size = Math.random() * 10 + 5;
-                
-                particle.style.position = 'absolute';
-                particle.style.left = `${e.clientX}px`;
-                particle.style.top = `${e.clientY}px`;
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                particle.style.borderRadius = isCherry ? '50% 0 50% 50%' : '50%';
-                particle.style.backgroundColor = isCherry 
-                    ? `rgba(${255}, ${Math.floor(Math.random()*50)+200}, ${Math.floor(Math.random()*50)+200}, ${Math.random()*0.8+0.2})`
-                    : `rgba(${Math.floor(Math.random()*50)+200}, ${Math.floor(Math.random()*50)+200}, ${255}, ${Math.random()*0.8+0.2})`;
-                particle.style.opacity = '0';
-                particle.style.pointerEvents = 'none';
-                particle.style.zIndex = '99999';
-                particle.style.transform = 'translate(-50%, -50%)';
-                
-                const angle = Math.random() * Math.PI * 2;
-                const distance = Math.random() * 100 + 50;
-                const x = Math.cos(angle) * distance;
-                const y = Math.sin(angle) * distance;
-                
-                const style = document.createElement('style');
-                style.innerHTML = `
-                    @keyframes particleFly {
-                        0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-                        50% { opacity: 0.8; transform: translate(${x}px, ${y}px) scale(0.8); }
-                        100% { opacity: 0; transform: translate(${x*1.5}px, ${y*1.5}px) scale(0); }
-                    }
-                `;
-                document.head.appendChild(style);
-                
-                particle.style.animation = `particleFly ${Math.random()*2+1}s ease forwards`;
-                container.appendChild(particle);
-                
-                setTimeout(() => {
-                    particle.remove();
-                    style.remove();
-                }, 3000);
-            }
-        }
     </script>
 </body>
 </html>
